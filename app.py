@@ -25,11 +25,32 @@ async def websocket_endpoint(websocket: WebSocket):
             # Receive command from the frontend
             command = await websocket.receive_text()
             
-            # Execute the command in a subprocess
-            process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            
+            # Use asyncio to run long-running commands asynchronously
+            process = await asyncio.create_subprocess_shell(
+                command,               # The command to execute
+                stdout=subprocess.PIPE,  # Capture the standard output
+                stderr=subprocess.PIPE   # Capture the standard error
+            )
+
+            # Stream the output as it's produced
+            async def read_stream(stream, websocket):
+                while True:
+                    line = await stream.readline()
+                    if not line:
+                        break
+                    await websocket.send_text(line.decode())  # Send output to WebSocket
+
+            # Start reading both stdout and stderr streams asynchronously
+            await asyncio.gather(
+                read_stream(process.stdout, websocket),
+                read_stream(process.stderr, websocket)
+            )
+
+            # Wait for the process to finish
+            await process.wait()
+
             # Capture the output and send it to the frontend in real-time
-            stdout, stderr = process.communicate()
+            stdout, stderr = await process.communicate()
             
             if stdout:
                 await websocket.send_text(stdout.decode())
