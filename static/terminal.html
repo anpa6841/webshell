@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Web Shell</title>
+    <style>
+        body {
+            font-family: monospace;
+            background-color: #121212;
+            color: #ffffff;
+            padding: 10px;
+        }
+        #output {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 14px;
+            margin-top: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            background-color: #1e1e1e;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        input {
+            background-color: #2e2e2e;
+            color: #ffffff;
+            border: 1px solid #444;
+            width: 100%;
+            padding: 10px;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Interactive Web Shell</h1>
+    <input type="text" id="command" placeholder="Type command here..." autofocus>
+    <div id="output"></div>
+
+    <script>
+        const commandInput = document.getElementById('command');
+        const outputDiv = document.getElementById('output');
+
+        const socket = new WebSocket("ws://localhost:8000/ws");
+
+        socket.onopen = () => {
+            console.log("Connected to WebSocket server");
+        };
+
+        socket.onmessage = (event) => {
+            // Output received messages from server
+            outputDiv.textContent += event.data + '\n';
+            outputDiv.scrollTop = outputDiv.scrollHeight; // Auto-scroll to latest output
+        };
+
+        socket.onerror = (error) => {
+            console.error("WebSocket error:", error);
+        };
+
+        socket.onclose = () => {
+            console.log("Disconnected from WebSocket server");
+        };
+
+        commandInput.addEventListener("keydown", function(event) {
+            if (event.key === "Enter") {
+                const command = commandInput.value.trim();
+                if (command) {
+                    socket.send(command);  // Send command to the server
+                    commandInput.value = ''; // Clear the input field
+                }
+            }
+        });
+    </script>
+</body>
+</html>
